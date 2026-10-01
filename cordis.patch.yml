@@ -4,11 +4,13 @@
 # path). The `dsh plugin` command pnpm-installs the package into the profile
 # and reconciles it into the profile's `dsh.profile.bundles` layer list.
 #
-# The Host half (this row) provides the `assistantEdit` Remote namespace that
-# appends a surface replacement event for an edited assistant message. The
-# browser half (declared by package.json `dsh.client`) is scanned by
-# dsh-client-modules and registers the edit pencil into the
-# `conversation.chat.assistant-actions` strip plus the edit modal.
+# The Host half (this row) provides the `assistantEdit` Remote namespace. It
+# owns one `@messageProjection` event type (`chat-thinking-editor/edit`) whose
+# pure interpreter rewrites the reply text and reasoning chain of an edited
+# assistant message in the model-visible history, preserving the message
+# identity and every non-text block. The browser half (declared by package.json
+# `dsh.client`) is scanned by dsh-client-modules and registers the edit pencil
+# into the `conversation.chat.assistant-actions` strip plus the edit modal.
 - insert:
     - id: chat-thinking-editor
       name: dsh-chat-thinking-editor

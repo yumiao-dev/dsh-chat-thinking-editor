@@ -3,25 +3,29 @@
  * conversation window (each reply the assistant produced — including the ones
  * between tool calls). Each row expands into two editors: reply text and
  * reasoning chain. Every row saves independently through the Host
- * `assistantEdit/replace` Remote; a successful save appends a surface
- * replacement so the model only ever sees the edited version, and the same
- * message can be edited any number of times.
+ * `assistantEdit/replace` Remote, which records a plugin-owned message
+ * projection: the model-visible history carries the edited content, and the
+ * same message can be edited any number of times.
+ *
+ * The transcript rendered behind this modal is built from raw session events
+ * and does not apply message projections, so the modal reads the committed
+ * edits back through `assistantEdit/list` and overlays them on the collected
+ * transcript values. A row with no committed edit shows the original reply.
  *
  * Closing: the dialog closes ONLY via the close button pinned at the TOP-LEFT
  * of the header. Backdrop taps, outside pointer-downs, touch swipes, and the
  * Escape key never close it — mobile remote access kept dismissing the modal
  * by accident while scrolling.
  *
- * @module dsh-assistant-edit/client/EditModal
+ * @module dsh-chat-thinking-editor/client/EditModal
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
-import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
-import type { SessionId, MessageId } from '@deepseek-ai/dsh-client-connection/client'
-import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
-import { IconCloseOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ClientConnectionRpc, MessageId, SessionId } from '@deepseek-ai/dsh-client-connection/client'
+import type { ChatNode, ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
+import { IconCloseOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AssistantEditActionProps } from './slots.ts'
 import css from './assistant-edit.module.css'
 
@@ -32,7 +36,8 @@ type ModalT = AssistantEditActionProps['t']
 export interface EditModalProps {
   /** Message whose pencil opened the modal; its row starts expanded. */
   messageId: MessageId
-  useSession: AssistantEditActionProps['useSession']
+  /** Chat selector hook; the transcript supplies every editable reply. */
+  useChat: AssistantEditActionProps['useChat']
   sessionId: SessionId
   rpc: ClientConnectionRpc | undefined
   t: ModalT
@@ -46,6 +51,8 @@ interface EditableItem {
   key: string
   /** Stable identity carried by the `assistant/message` event. */
   messageId: MessageId
+  /** Surface node seq of the source `assistant/message` event; the edit target. */
+  seq: number
   /** Owning turn (1-based). */
   turn: number
   /** Owning step within the turn. */
@@ -58,40 +65,25 @@ interface EditableItem {
   reasoning: string
 }
 
-/** Narrowed view of one `assistant-step` chat node's payload. */
-type AssistantStepNode = {
-  kind: string
-  anchorSeq?: number
-  data?: {
-    turn?: number
-    step?: number
-    finalNode?: {
-      messageId?: MessageId
-      turn?: number
-      step?: number
-      interrupted?: true
-      blocks?: readonly { kind: string; text?: string }[]
-    }
-  }
-}
-
 /** Collect every finalized assistant reply visible in the window, in order. */
-function collectEditable(snapshot: ConversationSnapshot | undefined): EditableItem[] {
+function collectEditable(snapshot: ChatSnapshot | undefined): EditableItem[] {
   if (snapshot === undefined) return []
   const items: EditableItem[] = []
-  for (const node of snapshot.chat.nodes.values() as readonly AssistantStepNode[]) {
+  for (const node of snapshot.nodes.values() as readonly ChatNode[]) {
     if (node.kind !== 'assistant-step') continue
-    const final = node.data?.finalNode
+    const data = node.data
+    const final = data.finalNode
     if (final?.messageId === undefined) continue
-    const blocks = final.blocks ?? []
+    const blocks = final.blocks
     items.push({
       key: String(final.messageId),
       messageId: final.messageId,
-      turn: node.data?.turn ?? final.turn ?? 0,
-      step: node.data?.step ?? final.step ?? 0,
+      seq: final.seq,
+      turn: data.turn,
+      step: data.step,
       interrupted: final.interrupted === true,
-      text: blocks.filter(b => b.kind === 'text').map(b => b.text ?? '').join(''),
-      reasoning: blocks.filter(b => b.kind === 'reasoning').map(b => b.text ?? '').join(''),
+      text: blocks.filter(block => block.kind === 'text').map(block => block.text).join(''),
+      reasoning: blocks.filter(block => block.kind === 'reasoning').map(block => block.text).join(''),
     })
   }
   items.sort((a, b) => a.turn - b.turn || a.step - b.step)
@@ -111,21 +103,71 @@ interface Draft {
   reasoning: string
 }
 
+/** One committed edit as the Host reports it. */
+interface CommittedEdit {
+  targetSeq: number
+  text: string
+  reasoning: string
+}
+
+/** Read the committed edits out of one `assistantEdit/list` response body. */
+function readCommitted(value: unknown): CommittedEdit[] {
+  if (typeof value !== 'object' || value === null) return []
+  const body = value as { ok?: unknown; edits?: unknown }
+  if (body.ok !== true || !Array.isArray(body.edits)) return []
+  const edits: CommittedEdit[] = []
+  for (const entry of body.edits as unknown[]) {
+    if (typeof entry !== 'object' || entry === null) continue
+    const row = entry as { targetSeq?: unknown; text?: unknown; reasoning?: unknown }
+    if (typeof row.targetSeq !== 'number' || typeof row.text !== 'string' || typeof row.reasoning !== 'string') continue
+    edits.push({ targetSeq: row.targetSeq, text: row.text, reasoning: row.reasoning })
+  }
+  return edits
+}
+
 /**
  * The modal dialog listing and editing every assistant message.
  * @param props - identity, read hooks, transport, and close callback.
  */
 export function EditModal({
-  messageId, useSession, sessionId, rpc, t, running, onClose,
+  messageId, useChat, sessionId, rpc, t, running, onClose,
 }: EditModalProps) {
-  // Re-collect on every snapshot flush: after a save the replacement event
-  // lands and the collected values become the edited truth.
-  const items = useSession(collectEditable)
+  const collected = useChat(collectEditable)
+  const [committed, setCommitted] = useState<Record<number, Draft>>({})
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({})
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const anySavedRef = useRef(false)
   const rowRefs = useRef(new Map<string, HTMLDivElement>())
+
+  // Overlay the committed edits: the rendered transcript keeps the original
+  // events, so the modal is the only place the edited truth is visible.
+  const items = useMemo<EditableItem[]>(() => collected.map(item => {
+    const override = committed[item.seq]
+    return override === undefined ? item : { ...item, text: override.text, reasoning: override.reasoning }
+  }), [collected, committed])
+
+  // Read back what earlier sessions already committed for this conversation.
+  useEffect(() => {
+    if (rpc === undefined) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const result = await rpc.call('/api', 'assistantEdit/list', {
+          args: { request: { sessionId } },
+        })
+        if (cancelled || !result.ok) return
+        const next: Record<number, Draft> = {}
+        for (const edit of readCommitted(result.value)) {
+          next[edit.targetSeq] = { text: edit.text, reasoning: edit.reasoning }
+        }
+        setCommitted(next)
+      } catch {
+        // The modal still works from the transcript values alone.
+      }
+    })()
+    return () => { cancelled = true }
+  }, [rpc, sessionId])
 
   // On open: expand (and scroll to) the row whose pencil was clicked.
   useEffect(() => {
@@ -186,9 +228,11 @@ export function EditModal({
         setRowStates(current => ({ ...current, [key]: { status: 'error', message } }))
         return
       }
-      // Success: the host event drives the surface; drop the local draft so
-      // the row shows the collected (edited) truth from the next flush.
+      // Success: the projection changes the model-visible history, not the
+      // rendered transcript, so record the committed value for this row and
+      // drop the draft that was shadowing it.
       anySavedRef.current = true
+      setCommitted(current => ({ ...current, [item.seq]: { text: draft.text, reasoning: draft.reasoning } }))
       setDrafts(current => {
         if (current[key] === undefined) return current
         const next = { ...current }
@@ -223,7 +267,7 @@ export function EditModal({
       >
         <div className={css.modalHeader}>
           <button type="button" className={css.close} aria-label={t('dialog.close')} onClick={close}>
-            <IconCloseOutline16 size={14} />
+            <IconCloseOutlineRegular size={14} />
           </button>
           <div className={css.titleWrap}>
             <h2 className={css.modalTitle}>{t('dialog.title')}</h2>

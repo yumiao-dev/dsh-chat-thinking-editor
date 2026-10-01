@@ -31,7 +31,7 @@ Small courtesies: images and tool calls are left alone; empty reply = blank it o
 
 ## Install
 
-You need DeepSeek Harness (`dsh`, `0.1.5-rc.2` or newer recommended).
+You need DeepSeek Harness (`dsh`, `0.2.0-rc.2` or newer recommended).
 
 ```bash
 # clone it and mount from a local path (recommended — tracks the source)
@@ -64,9 +64,15 @@ While writing this I fixed an annoying one: previously, select-all (Ctrl/Cmd+A) 
 
 ## Compatibility
 
-- Target: DeepSeek Harness `0.1.5-rc.2+` (dependency range `^0.1.1-rc.2`);
+- Target: DeepSeek Harness `0.2.0-rc.2+`;
 - Runtime: Node 22.19+ / 24+, pnpm 11;
-- Built on the official `surface replacement` event (same machinery as compaction) and the `conversation.chat.assistant-actions` slot — no private APIs.
+- Built on the official **message projection** mechanism (a plugin-owned projection event, the supported DSH 0.2 way to change the content of an existing message) and the `conversation.chat.assistant-actions` slot — no private APIs.
+
+> **Upgrading from 0.1.x:** as of DSH 0.2 an `assistant/message` event may no longer carry `sourceEventSeqs`, which means it **cannot replace itself through a surface replacement** any more — the core mechanism of plugin 0.1.x no longer exists on the new platform. 0.2.0 uses the projection contract DSH provides for plugins: the edit is recorded in a plugin-owned event, and a pure interpreter rewrites the target message during replay. The message identity, images, tool calls and every other non-text block are preserved verbatim.
+>
+> One caveat: the conversation transcript is rendered straight from the raw events and does **not** apply message projections, so the dialog overlays the committed edits itself. What the model sees is always your version.
+>
+> Another: this plugin's event type is not part of DSH's built-in event vocabulary, so on startup the plugin admits that type into the running process's vocabulary first; if admission fails it **disables editing outright** rather than ever writing an event that would leave a session unreadable. Conversely, **if you uninstall the plugin after editing, a session containing those edits may no longer be readable** — revert your edits before uninstalling.
 
 > Heads-up: DSH itself is a **developer preview**, so its APIs will likely keep changing. If an upgrade breaks things, just open an issue.
 

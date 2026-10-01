@@ -1,10 +1,10 @@
 /**
- * Browser client bundle for dsh-agent-teams, mirroring the DeepSeek Harness
- * `clientBundle` protocol (packages/client/tsdown.client.ts):
+ * Browser client bundle for dsh-chat-thinking-editor, mirroring the DeepSeek
+ * Harness `clientBundle` protocol (packages/client/tsdown.client.ts):
  *
  * - CJS closure-factory artifact: `window.__ModuleLoader__.load({ id,
  *   factory: (require) => ... })`; externals resolve through the loader
- *   module table (platform seed entries + the runtime store exemption).
+ *   module table (the platform seed entries).
  * - CSS Modules compiled by lightningcss into hashed class maps; the css
  *   text auto-injects a `<style data-plugin>` tag at factory execution.
  * - Every other @deepseek-ai value import is a build error (purity gate):
@@ -21,21 +21,17 @@ import { defineConfig, type UserConfig } from 'tsdown'
 /** Platform seed entries the browser module table answers (external). */
 const PLATFORM_MODULES = [
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', '@deepseek-ai/cordis',
+  '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
-  '@deepseek-ai/dsh-client-web-react',
   '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-ui-attachment',
-  '@deepseek-ai/dsh-client-schema-form',
+  '@deepseek-ai/dsh-client-ui-dockkit',
 ]
 
-/** Runtime store engine: documented exemption, external at runtime. */
-const RUNTIME_STORE_EXEMPTION = '@deepseek-ai/dsh-client-runtime/client'
-
 /** Externals resolved from the loader module table. */
-const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES, RUNTIME_STORE_EXEMPTION]
+const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES]
 
 /** Wire/type layers a client bundle may inline (no shared runtime identity). */
-const INLINE_SAFE = /^@deepseek-ai\/dsh-(host-apiproxy|session|llm|tools|brand)(\/|$)/
+const INLINE_SAFE = /^(?:@deepseek-ai\/dsh-(?:file-reference|session|llm|tools|brand|deque|output-retention|typert-protocol|util-crypto|util-values|util-workspace-path)(?:\/|$)|@deepseek-ai\/dsh-token-meter\/client$|@deepseek-ai\/dsh-native-command\/types$|@deepseek-ai\/dsh-host-open-in-app\/shared$|@deepseek-ai\/dsh-plugin-manager\/registry$|@deepseek-ai\/dsh-agent-preset-registry\/display$|@deepseek-ai\/dsh-api-workspace-controller\/default-workspace$|@deepseek-ai\/dsh-spill-policy\/notice$)/
 
 /** Vendored framework libraries (no cross-plugin runtime identity). */
 const VENDORED_LIBRARY = /^@deepseek-ai\/(cosmokit|schemastery)(\/|$)/

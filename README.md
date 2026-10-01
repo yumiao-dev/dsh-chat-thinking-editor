@@ -31,7 +31,7 @@
 
 ## 安装
 
-前提：装好 DeepSeek Harness（`dsh`，推荐 `0.1.5-rc.2` 及以上版本）。
+前提：装好 DeepSeek Harness（`dsh`，推荐 `0.2.0-rc.2` 及以上版本）。
 
 已经发到 npm 了，一行就完事：
 
@@ -66,9 +66,15 @@ dsh plugin --profile web add /path/to/dsh-chat-thinking-editor
 
 ## 兼容性
 
-- 目标版本：DeepSeek Harness `0.1.5-rc.2+`（依赖区间 `^0.1.1-rc.2`）；
+- 目标版本：DeepSeek Harness `0.2.0-rc.2+`；
 - 环境：Node 22.19+ / 24+，pnpm 11；
-- 底层走的是官方 `surface replacement` 事件（和 compact 那套机制是同一个东西）和 `conversation.chat.assistant-actions` 槽位，不碰私有接口。
+- 底层走的是官方 **message projection**（插件自有的消息投影事件，DSH 0.2 起用来改写已存在消息的官方机制）和 `conversation.chat.assistant-actions` 槽位，不碰私有接口。
+
+> **从 0.1.x 升上来的说明**：DSH 0.2 起，`assistant/message` 事件不再允许 `sourceEventSeqs`，也就是说它**不能再用 surface replacement 替换自己**了——插件 0.1.x 的核心机制在新版上已经不成立。0.2.0 改用官方给插件准备的 message projection：编辑内容记在插件自有事件里，由一个纯函数在回放时把对应消息改写成你的版本，消息 id 和图片、工具调用这些非文本块全部原样保留。
+>
+> 注意一点：会话界面的正文是直接按原始事件渲染的，**不会**套用 message projection，所以插件会在弹窗里自己把已保存的编辑盖回去显示。模型那边看到的始终是你的版本。
+>
+> 还有一条：插件的事件类型不属于 DSH 仓库自带的事件表，所以插件启动时会先把这个类型登记进当前进程的事件词汇表，登记不成功就**直接禁用编辑**，绝不会写出一个让会话之后打不开的事件。反过来说，**如果你在编辑过之后把插件卸掉，含编辑记录的会话可能无法再被读取**——卸载前建议先把编辑改回原文。
 
 > 提醒一句：DSH 官方自己都标了 **developer preview**，接口往后大概率还会变。哪天升级 DSH 之后发现不好用了，来提个 issue 就行。
 
