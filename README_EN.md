@@ -24,24 +24,22 @@ One line: **Keep the AI's cleverness, cut what you don't want, and make it fully
 
 - Every AI message gets a little **pencil** in its action strip;
 - Open it and you can edit **both** the reply text and the **thinking chain**;
-- Not just the one in front of you — it lists **every** reply in the session, including the mid-tool-call ones;
+- The pencil edits only that one message — reply text and thinking chain, no scrolling list;
 - Once saved, the AI only knows your version. Edit the same reply as many times as you like, no re-runs needed.
 
 Small courtesies: images and tool calls are left alone; empty reply = blank it out; empty thinking = drop that block; editing is locked while the agent is running so you two don't wrestle over the same text.
 
 ## Install
 
-You need DeepSeek Harness (`dsh`, `0.1.5-rc.2` or newer recommended).
+You need DeepSeek Harness (`dsh`, `0.2.1-rc.2` or newer 0.2.x).
 
 ```bash
-# clone it and mount from a local path (recommended — tracks the source)
+# npm package (current 0.2.0)
+dsh plugin --profile web add dsh-chat-thinking-editor@0.2.0
+
+# or clone and mount from a local path
+git clone https://github.com/yumiao-dev/dsh-chat-thinking-editor.git
 dsh plugin --profile web add /path/to/dsh-chat-thinking-editor
-```
-
-If it ever ships on npm, it's one line:
-
-```bash
-dsh plugin --profile web add dsh-chat-thinking-editor
 ```
 
 Prefer to do it by hand? Merge the row from [cordis.patch.yml](./cordis.patch.yml) into your profile's `dsh.profile.bundles` and restart `dsh web`.
@@ -52,11 +50,11 @@ Refresh the DSH page after installing and you'll see the pencil.
 
 1. Run a conversation, find a reply you're not happy with;
 2. Hover it, click the pencil;
-3. In *Edit assistant messages*, expand that row;
+3. The pencil opens the single-message editor;
 4. Edit the reply and/or the thinking chain (leave blank = remove that part);
 5. Save — it now continues from your version.
 
-Note: to close the dialog you have to click the **top-left** close button. Backdrop clicks and Esc won't dismiss it — that's on purpose, so you don't accidentally close it while scrolling on your phone.
+Close it with the native Modal ×, Esc, a backdrop click, or the footer **Close** button.
 
 ## A little bug I fixed along the way
 
@@ -64,9 +62,9 @@ While writing this I fixed an annoying one: previously, select-all (Ctrl/Cmd+A) 
 
 ## Compatibility
 
-- Target: DeepSeek Harness `0.1.5-rc.2+` (dependency range `^0.1.1-rc.2`);
-- Runtime: Node 22.19+ / 24+, pnpm 11;
-- Built on the official `surface replacement` event (same machinery as compaction) and the `conversation.chat.assistant-actions` slot — no private APIs.
+- Target: DeepSeek Harness `0.2.1-rc.2` (peer range `^0.2.1-rc.2`; plugin version `0.2.0`);
+- Runtime: Node 22.19+ / 24+, pnpm 12;
+- Built on the official `plugin:assistant-edit` message projection (same seam as `image/offload`) and the `conversation.chat.assistant-actions` slot — no private APIs.
 
 > Heads-up: DSH itself is a **developer preview**, so its APIs will likely keep changing. If an upgrade breaks things, just open an issue.
 

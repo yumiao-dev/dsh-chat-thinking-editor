@@ -1,19 +1,18 @@
 /**
- * Per-message edit action: a pencil in the assistant-actions strip that opens
- * the edit LIST modal (every finalized assistant message in the session, this
- * one pre-expanded and scrolled into view). The button reuses the IconActions
- * row chrome (28px circle, hover fill) and is disabled while the agent is
- * running, matching the conflict rule of requirement 4.
+ * Per-message edit action: a toolbar button in the assistant-actions strip
+ * that opens the edit LIST modal (every finalized assistant message in the
+ * session, this one pre-expanded and scrolled into view). It reuses the
+ * shipped toolbar Button and is disabled while the agent is running.
  * @module dsh-assistant-edit/client/EditAction
  */
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
-  IconEditOutline16, Tooltip,
+  Button, IconEditOutlineRegular, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AssistantEditActionProps } from './slots.ts'
 import { EditModal } from './EditModal.tsx'
-import css from './assistant-edit.module.css'
+import { ensureMessageEdits, messageEditsOf, subscribeMessageEdits } from './message-edits.ts'
 
 /**
  * One message's edit entry.
@@ -25,6 +24,16 @@ export function EditAction({
   // The addressed fragment is immutable and cache-stable; reuse it for the
   // closure below rather than a second read. `running` gates the pencil.
   const running = useSession(snapshot => snapshot.running)
+  const subscribe = useCallback(
+    (listener: () => void) => subscribeMessageEdits(sessionId, listener),
+    [sessionId],
+  )
+  const read = useCallback(() => messageEditsOf(sessionId), [sessionId])
+  const edits = useSyncExternalStore(subscribe, read, read)
+  const edited = edits.has(messageId)
+  useEffect(() => {
+    if (rpc !== undefined) void ensureMessageEdits(sessionId, rpc)
+  }, [sessionId, rpc])
   const [open, setOpen] = useState(false)
   const [justEdited, setJustEdited] = useState(false)
   const justEditedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -34,9 +43,9 @@ export function EditAction({
     setOpen(true)
   }, [])
 
-  const closeModal = useCallback((edited: boolean) => {
+  const closeModal = useCallback((didEdit: boolean) => {
     setOpen(false)
-    if (!edited) return
+    if (!didEdit) return
     setJustEdited(true)
     // Retire the transient "已编辑" state after a beat; the durable truth is
     // the host-side replacement event, not this badge.
@@ -46,22 +55,20 @@ export function EditAction({
 
   return (
     <>
-      <Tooltip label={justEdited ? t('edited.badge') : t('action.edit')} side="bottom">
-        <button
-          type="button"
-          className={css.action}
-          aria-label={justEdited ? t('edited.badge') : t('action.edit')}
-          data-active={justEdited || undefined}
+      <Tooltip label={edited || justEdited ? t('edited.badge') : t('action.edit')} side="bottom">
+        <Button
+          variant="toolbar"
+          size="sm"
+          icon={<IconEditOutlineRegular size={16} />}
+          aria-label={edited || justEdited ? t('edited.badge') : t('action.edit')}
+          aria-pressed={edited || justEdited}
           onClick={openModal}
           disabled={running}
-        >
-          <IconEditOutline16 />
-        </button>
+        />
       </Tooltip>
       {open && (
         <EditModal
           messageId={messageId}
-          useSession={useSession}
           sessionId={sessionId}
           rpc={rpc}
           t={t}

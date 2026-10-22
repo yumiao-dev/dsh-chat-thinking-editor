@@ -8,6 +8,8 @@ export declare const zh: {
     'dialog.title': string;
     'dialog.close': string;
     'dialog.empty': string;
+    'dialog.loading': string;
+    'dialog.restore': string;
     'dialog.hint': string;
     'dialog.replyLabel': string;
     'dialog.reasoningLabel': string;
@@ -15,6 +17,7 @@ export declare const zh: {
     'dialog.saving': string;
     'dialog.runningNotice': string;
     'row.saved': string;
+    'row.edited': string;
     'row.interrupted': string;
     'row.count': string;
     'error.generic': string;
@@ -30,6 +33,8 @@ export declare const en: {
     'dialog.title': string;
     'dialog.close': string;
     'dialog.empty': string;
+    'dialog.loading': string;
+    'dialog.restore': string;
     'dialog.hint': string;
     'dialog.replyLabel': string;
     'dialog.reasoningLabel': string;
@@ -37,6 +42,7 @@ export declare const en: {
     'dialog.saving': string;
     'dialog.runningNotice': string;
     'row.saved': string;
+    'row.edited': string;
     'row.interrupted': string;
     'row.count': string;
     'error.generic': string;

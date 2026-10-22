@@ -1,29 +1,19 @@
 /**
- * The edit list modal: lists EVERY finalized assistant message in the current
- * conversation window (each reply the assistant produced — including the ones
- * between tool calls). Each row expands into two editors: reply text and
- * reasoning chain. Every row saves independently through the Host
- * `assistantEdit/replace` Remote; a successful save appends a surface
- * replacement so the model only ever sees the edited version, and the same
- * message can be edited any number of times.
- *
- * Closing: the dialog closes ONLY via the close button pinned at the TOP-LEFT
- * of the header. Backdrop taps, outside pointer-downs, touch swipes, and the
- * Escape key never close it — mobile remote access kept dismissing the modal
- * by accident while scrolling.
+ * Single-message edit dialog, built entirely on shipped DSH primitives:
+ * `Modal` for chrome/close/escape, `Button` for actions, `Tag` for state, and
+ * `TextShimmer` for loading. No list, no nested scroll: the clicked message's
+ * reply and reasoning are the only two fields.
  *
  * @module dsh-assistant-edit/client/EditModal
  */
-import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client';
-import type { SessionId, MessageId } from '@deepseek-ai/dsh-client-connection/client';
+import type { ClientConnectionRpc, MessageId, SessionId } from '@deepseek-ai/dsh-client-connection/client';
 import type { AssistantEditActionProps } from './slots.ts';
-/** Locale prop narrowed to the keys this modal consumes. */
+/** Locale prop narrowed to the keys this dialog consumes. */
 type ModalT = AssistantEditActionProps['t'];
-/** One modal's props: owner message (for initial focus) + session kit + injected face. */
+/** One dialog's props: the clicked message, session kit, and close callback. */
 export interface EditModalProps {
-    /** Message whose pencil opened the modal; its row starts expanded. */
+    /** Message whose pencil opened the dialog. */
     messageId: MessageId;
-    useSession: AssistantEditActionProps['useSession'];
     sessionId: SessionId;
     rpc: ClientConnectionRpc | undefined;
     t: ModalT;
@@ -31,8 +21,8 @@ export interface EditModalProps {
     onClose: (edited: boolean) => void;
 }
 /**
- * The modal dialog listing and editing every assistant message.
- * @param props - identity, read hooks, transport, and close callback.
+ * The dialog editing exactly the message whose pencil was clicked.
+ * @param props - message identity, transport, running state, and close callback.
  */
-export declare function EditModal({ messageId, useSession, sessionId, rpc, t, running, onClose, }: EditModalProps): any;
+export declare function EditModal({ messageId, sessionId, rpc, t, running, onClose, }: EditModalProps): import("react").JSX.Element;
 export {};

@@ -1,9 +1,8 @@
 /**
- * Per-message edit action: a pencil in the assistant-actions strip that opens
- * the edit LIST modal (every finalized assistant message in the session, this
- * one pre-expanded and scrolled into view). The button reuses the IconActions
- * row chrome (28px circle, hover fill) and is disabled while the agent is
- * running, matching the conflict rule of requirement 4.
+ * Per-message edit action: a toolbar button in the assistant-actions strip
+ * that opens the edit LIST modal (every finalized assistant message in the
+ * session, this one pre-expanded and scrolled into view). It reuses the
+ * shipped toolbar Button and is disabled while the agent is running.
  * @module dsh-assistant-edit/client/EditAction
  */
 import type { AssistantEditActionProps } from './slots.ts';

@@ -1,281 +1,31 @@
-/* Assistant message edit modal: dialog card, action pencils, editors, and
-   inline failure. Every color/value comes from DSH theme tokens (--dsw-*), so
-   light/dark and brand theming stay consistent with the host UI. The modal
-   follows the Menu card recipe (r12, inverted hairline border, shadow-lv3).
-   The dialog closes ONLY through the top-left close button: the mask below is
-   pure visual chrome and swallows every tap/swipe without dismissing. */
-
-.action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 6px;
-  border: none;
-  border-radius: 28px;
-  background: transparent;
-  color: var(--dsw-alias-label-tertiary);
-  cursor: pointer;
-}
-
-.action:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
-}
-
-.action:disabled {
-  cursor: default;
-  opacity: 0.4;
-}
-
-.action[data-active] {
-  color: var(--dsw-alias-label-primary);
-}
-
-/* Modal overlay: centered dialog over a blurred page mask. */
-.overlay {
-  user-select: none;  position: fixed;
-  inset: 0;
-  z-index: 1100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-/* Visual mask only — it intentionally has no close affordance. */
-.mask {
-  position: absolute;
-  inset: 0;
-  background: var(--dsw-alias-bg-mask-1);
-  backdrop-filter: var(--dsw-mask-blur);
-  pointer-events: auto;
-}
+/*
+ * The dialog chrome, buttons, tags, and loading text come from
+ * @deepseek-ai/dsh-client-ui-primitives. This file only supplies layout and
+ * the one control DSH has no primitive for (a multi-line textarea), using the
+ * same --dsw-* tokens as the shipped UI.
+ */
 
 .modal {
-  position: relative;
-  box-sizing: border-box;
-  width: min(640px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
+  width: min(560px, 100%);
+  max-height: 100%;
+}
+
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  max-height: min(70vh, 640px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  border: 1px solid var(--dsw-alias-border-inverted);
-  border-radius: 12px;
-  background: var(--dsw-specific-menu);
-  box-shadow: var(--dsw-shadow-lv3);
-  pointer-events: auto;
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
 
-/* Header: close button pinned at the TOP-LEFT (the only way out). */
-.modalHeader {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 28px;
-  height: 28px;
-  padding: 5px;
-  border: none;
-  border-radius: 14px;
-  background: transparent;
-  color: var(--dsw-alias-label-tertiary);
-  cursor: pointer;
-}
-
-.close:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
-}
-
-.titleWrap {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-}
-
-.modalTitle {
+.status {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--dsw-alias-label-primary);
-  white-space: nowrap;
-}
-
-.count {
-  flex: none;
-  font-size: 12px;
+  padding: 20px 0;
   color: var(--dsw-alias-label-tertiary);
-}
-
-.hint {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.empty {
-  margin: 0;
-  padding: 24px 12px;
+  font-size: 13px;
   text-align: center;
-  font-size: 13px;
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.notice {
-  margin: 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--dsw-alias-state-warn-tertiary);
-  color: var(--dsw-alias-state-warn-primary);
-  font-size: 13px;
-}
-
-/* Message list: one card per assistant reply. */
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-bottom: 4px;
-}
-
-.row {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 10px;
-  background: var(--dsw-alias-bg-layer-1);
-  overflow: hidden;
-}
-
-.row[data-expanded] {
-  border-color: var(--dsw-alias-brand-primary);
-}
-
-.rowHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 8px 10px;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.rowHead:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
-.rowIndex {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 4px;
-  border-radius: 11px;
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.rowMeta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: none;
-}
-
-.rowBadge,
-.rowBadgeMuted {
-  display: inline-flex;
-  align-items: center;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 9px;
-  font-size: 10px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.rowBadge {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.rowBadgeMuted {
-  background: var(--dsw-alias-state-warn-tertiary);
-  color: var(--dsw-alias-state-warn-primary);
-}
-
-.savedBadge {
-  display: inline-flex;
-  align-items: center;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 9px;
-  background: var(--dsw-alias-state-success-tertiary, var(--dsw-alias-interactive-bg-hover));
-  color: var(--dsw-alias-state-success-primary, var(--dsw-alias-label-secondary));
-  font-size: 10px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.rowPreview {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.chevron {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 12px;
-  transition: transform 0.15s ease;
-  transform: rotate(-90deg);
-}
-
-.chevron[data-open] {
-  transform: rotate(0deg);
-}
-
-.rowBody {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px;
-  border-top: 1px solid var(--dsw-alias-border-l2);
 }
 
 .field {
@@ -285,14 +35,14 @@
 }
 
 .label {
+  color: var(--dsw-alias-label-secondary);
   font-size: 12px;
   font-weight: 500;
-  color: var(--dsw-alias-label-secondary);
 }
 
-.input {
-  user-select: text;  width: 100%;
+.textarea {
   box-sizing: border-box;
+  width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
@@ -304,49 +54,22 @@
   resize: vertical;
 }
 
-.input:focus {
-  outline: none;
-  border-color: var(--dsw-alias-brand-primary);
-}
-
-.input:disabled {
-  opacity: 0.5;
-}
-
-.input::placeholder {
+.textarea::placeholder {
   color: var(--dsw-alias-label-tertiary);
 }
 
-.rowFooter {
+.textarea:focus {
+  border-color: var(--dsw-alias-state-business-primary);
+  outline: none;
+}
+
+.textarea:disabled {
+  opacity: 0.5;
+}
+
+.metaRow {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
-  min-height: 30px;
-}
-
-.save {
-  height: 30px;
-  padding: 0 14px;
-  border: none;
-  border-radius: 15px;
-  font-size: 13px;
-  cursor: pointer;
-  background: var(--dsw-alias-button-primary-fill);
-  color: var(--dsw-alias-label-primary-foreground);
-}
-
-.save:hover:not(:disabled) {
-  background: var(--dsw-alias-button-primary-hover);
-}
-
-.save:disabled {
-  cursor: default;
-  opacity: 0.4;
-}
-
-.failure {
-  padding-left: 4px;
-  color: var(--dsw-alias-state-error-primary);
-  font-size: 12px;
 }
